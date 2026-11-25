@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RefMix: Diversity-Preserving Reward Fine-Tuning</title>
+<meta name="description" content="RefMix: Expanding Endpoint Proposals for Diversity-Preserving Reward Fine-Tuning. A reference model starts part of each training pool, so reward fine-tuning keeps visual diversity at the same cost.">
+<meta property="og:title" content="RefMix: Expanding Endpoint Proposals for Diversity-Preserving Reward Fine-Tuning">
+<meta property="og:description" content="A reference model starts part of each training pool, so reward fine-tuning keeps visual diversity at the same cost.">
+<meta property="og:image" content="static/videos/bowl_training_poster.jpg">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<style>
+:root {
+  color-scheme: light;
+  --ink: #1a1a1a;
+  --muted: #5b6270;
+  --line: #e3e5e9;
+  --soft: #f6f7f9;
+  --blue: #2f6db5;
+  --green: #3c9a5f;
+  --green-ink: #2b7a49;
+  --mix-bg: #eef6f1;
+  --max: 980px;
+  --text: 740px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: #fff; color: var(--ink);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+main { max-width: var(--max); margin: 0 auto; padding: 0 16px 64px; }
+header { text-align: center; padding: 56px 0 8px; }
+h1 { font-size: clamp(1.6rem, 3.6vw, 2.35rem); line-height: 1.2; margin: 0 auto 18px; max-width: 860px; font-weight: 700; letter-spacing: -0.01em; }
+h1 .name { display: block; font-size: 1.15em; margin-bottom: 4px; }
+.authors { font-size: 1.02rem; margin: 0 auto 4px; max-width: 820px; }
+.authors span { white-space: nowrap; margin: 0 7px; }
+.affil { color: var(--muted); margin: 0 0 2px; }
+.notes { color: var(--muted); font-size: 0.85rem; margin: 0 0 20px; }
+.links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn { display: inline-block; padding: 8px 18px; border-radius: 999px; background: var(--ink); color: #fff; text-decoration: none; font-size: 0.95rem; }
+.btn:hover { background: #333; }
+.btn.off { background: #c9ccd2; color: #fff; cursor: default; }
+section { padding-top: 56px; }
+h2 { font-size: 1.5rem; line-height: 1.3; margin: 0 0 12px; letter-spacing: -0.005em; }
+h3 { font-size: 1.1rem; line-height: 1.4; margin: 36px 0 10px; }
+p { margin: 0 0 14px; }
+/* every block of text shares one column width; figures, videos and the gallery use the full width */
+section > h2, section > h3, section > p, section > .eq, .tabs, .tablewrap, .note, figcaption, .abstract {
+  max-width: var(--text); margin-left: auto; margin-right: auto;
+}
+figure { margin: 22px 0 26px; }
+figure video, figure img { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; }
+figure.framed img { border: 1px solid var(--line); }
+figure.narrow { max-width: 640px; margin-left: auto; margin-right: auto; }
+figure.text { max-width: var(--text); margin-left: auto; margin-right: auto; }
+figcaption { color: var(--muted); font-size: 0.9rem; line-height: 1.5; margin-top: 10px; }
+figure.narrow figcaption { max-width: none; }
+.abstract { background: var(--soft); border-radius: 10px; padding: 22px 26px 10px; margin-top: 8px; }
+.abstract h2 { font-size: 1.25rem; text-align: center; }
+.eq { background: var(--soft); border-radius: 10px; padding: 4px 18px; overflow-x: auto; margin-top: 14px; margin-bottom: 16px; }
+.eq .katex-display { margin: 12px 0; }
+.hl-blue { color: var(--blue); font-weight: 600; }
+.hl-green { color: var(--green-ink); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: 0.93rem; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 10px; text-align: center; }
+thead th { border-bottom: 1.5px solid var(--ink); font-weight: 600; vertical-align: bottom; }
+thead tr:first-child th { border-bottom: 1px solid var(--line); }
+thead th.b { color: var(--blue); }
+thead th.r { color: var(--green-ink); }
+tbody th { font-weight: 600; text-align: left; vertical-align: middle; border-right: 1px solid var(--line); }
+td.m { text-align: left; white-space: nowrap; }
+td.r { background: var(--mix-bg); }
+td.gap { border-left: 1px solid var(--line); }
+tr.grp td, tr.grp th { border-top: 1.5px solid #c2c6cd; }
+tbody tr:last-child td, tbody tr:last-child th { border-bottom: 1.5px solid var(--ink); }
+.tablewrap { overflow-x: auto; margin-top: 4px; margin-bottom: 8px; }
+.note { color: var(--muted); font-size: 0.88rem; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 14px 0 12px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.seg button { border: 0; background: none; font: inherit; font-size: 0.92rem; padding: 5px 14px; border-radius: 999px; cursor: pointer; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.prompt { font-style: italic; margin: 0 0 10px; max-width: none; }
+.prompt b { font-style: normal; }
+.grids { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.grids .lab { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; margin-bottom: 6px; }
+.grids .lab small { font-weight: 400; color: var(--muted); font-size: 0.88rem; }
+.grids img { width: 100%; height: auto; display: block; border-radius: 6px; outline: 2px solid; outline-offset: 3px; }
+.grids .base .lab { color: var(--blue); }
+.grids .base img { outline-color: var(--blue); }
+.grids .mix .lab { color: var(--green-ink); }
+.grids .mix img { outline-color: var(--green); }
+a { color: var(--blue); }
+@media (max-width: 720px) {
+  header { padding-top: 36px; }
+  .grids { grid-template-columns: 1fr; }
+  table { min-width: 0; font-size: 0.78rem; }
+  th, td { padding: 5px 3px; }
+  thead th { white-space: nowrap; }
+  .abstract { padding: 18px 18px 6px; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1><span class="name">RefMix</span>Expanding Endpoint Proposals for Diversity&#8209;Preserving Reward Fine&#8209;Tuning</h1>
+  <p class="authors">
+    <span>Jaemin Kim<sup>1,2,†</sup></span>
+    <span>Christian Simon<sup>2</sup></span>
+    <span>Dongseok Shim<sup>2</sup></span>
+    <span>Wei-Yao Wang<sup>2</sup></span>
+    <span>Qiyu Wu<sup>2</sup></span>
+    <span>Masato Ishii<sup>2</sup></span>
+    <span>Shusuke Takahashi<sup>2</sup></span>
+    <span>Jong Chul Ye<sup>1,*</sup></span>
+    <span>Yuki Mitsufuji<sup>2,*</sup></span>
+  </p>
+  <p class="affil"><sup>1</sup>KAIST &nbsp;&nbsp; <sup>2</sup>Sony Group Corporation</p>
+  <p class="notes"><sup>†</sup>Work done during an internship at Sony Group Corporation &nbsp;·&nbsp; <sup>*</sup>Corresponding authors</p>
+  <div class="links">
+    <span class="btn off" title="link added once the arXiv version is public">Paper (arXiv, soon)</span>
+  </div>
+</header>
+
+<figure>
+  <video src="static/videos/bowl_training.mp4" poster="static/videos/bowl_training_poster.jpg" autoplay muted loop playsinline preload="metadata"></video>
+  <figcaption>RAM on GenEval, “a photo of a bowl”, over 30 training updates, with the same initial noise in each column. <span class="hl-blue">Baseline</span> samples converge to one look; <span class="hl-green">RefMix</span> keeps varied glazes, contents and backgrounds.</figcaption>
+</figure>
+
+<section id="abstract" class="abstract">
+  <h2>Abstract</h2>
+  <p>Online forward matching fine-tunes a flow model on its own reward-scored samples. As high-reward modes take over, alternative modes stop appearing in the training pool and visual diversity shrinks. RefMix fills part of each pool with hybrid samples, which the frozen reference model starts at high noise and the current model finishes, and leaves the reward and the training objective unchanged. Across NFT, AWM and RAM, RefMix improves visual diversity while largely preserving reward, with up to 44% higher diversity at comparable reward.</p>
+</section>
+
+<section id="problem">
+  <h2>Reward goes up, diversity goes down</h2>
+  <p>As the reward rises, the samples for a prompt become nearly identical.</p>
+  <figure>
+    <video src="static/videos/problem_bowl.mp4" poster="static/videos/problem_bowl_poster.jpg" autoplay muted loop playsinline preload="metadata"></video>
+    <figcaption>Baseline RAM on GenEval. As the reward rises to 0.82, DINO diversity falls to 0.06.</figcaption>
+  </figure>
+
+  <h3>Why: rare modes drop out of the training pool</h3>
+  <p>A visual mode that the current model produces with probability \(p\) appears in a pool of \(N\) samples with probability</p>
+  <div class="eq">\[ 1-(1-p)^N \;\approx\; Np . \]</div>
+  <p>With \(N=24\) and \(p=1\%\), it is missing from about 79% of pools. A missing mode gets no direct training signal, becomes rarer, and the loop continues.</p>
+  <figure class="narrow">
+    <video src="static/videos/toy_collapse.mp4" poster="static/videos/toy_collapse_poster.jpg" autoplay muted loop playsinline preload="metadata"></video>
+    <figcaption>2D toy: the two end modes (orange) have high reward. NFT sends most samples to one of them; RefMix keeps both. One training run shown.</figcaption>
+  </figure>
+</section>
+
+<section id="method">
+  <h2>RefMix: the reference model starts, the tuned model finishes</h2>
+  <p>RefMix changes only where training samples come from. The first high-noise steps set the coarse layout, so running them with the frozen reference model can bring back layouts that the tuned model no longer produces.</p>
+  <figure class="framed">
+    <img src="static/images/pipeline.jpg" alt="RefMix pipeline: ordinary and hybrid sampling fill the training pool, which is scored, re-noised and fitted with the endpoint and anchor regressions." loading="lazy">
+  </figure>
+  <p>Forward matching normally trains on samples from the current model, \(x_0\sim P_n\). RefMix draws them from a mixture with the hybrid sampler \(Q_n\):</p>
+  <div class="eq">\[ x_0\sim M_n=(1-\alpha)\,{\color{#2f6db5}P_n}+\alpha\,{\color{#3c9a5f}Q_n} . \]</div>
+  <p>With \(\alpha=0.75\), 18 of the 24 samples per prompt are hybrid and 6 are ordinary. Each reference call replaces a current-model call, so the cost is unchanged.</p>
+
+  <figure>
+    <video src="static/videos/hybrid_sampler_bowl.mp4" poster="static/videos/hybrid_sampler_bowl_poster.jpg" autoplay muted loop playsinline preload="metadata"></video>
+    <figcaption>Ordinary and hybrid sampling from the same collapsed baseline RAM checkpoint and initial noise. With the reference model for the first 4 of 40 steps, samples leave the dark-bowl mode and keep the tuned model’s finish.</figcaption>
+  </figure>
+</section>
+
+<section id="results">
+  <h2>More diverse across methods and tasks</h2>
+  <p>SD3.5-Medium with LoRA, three rewards and three forward matching methods. DINO diversity increases in all nine settings. Reward stays within 0.3% or improves, except AWM on GenEval (0.815 to 0.799).</p>
+
+  <h3>Same noise, with and without RefMix</h3>
+  <p>All 16 samples for one prompt; tiles at the same position share the initial noise.</p>
+  <div class="tabs" role="group" aria-label="Choose method and task">
+    <div class="seg" id="seg-method"></div>
+    <div class="seg" id="seg-task"></div>
+  </div>
+  <p class="prompt" id="g-prompt"></p>
+  <div class="grids">
+    <div class="base"><div class="lab">Baseline <small id="g-rb"></small></div><img id="g-base" alt="16 baseline samples" width="972" height="972"></div>
+    <div class="mix"><div class="lab">+ RefMix <small id="g-rm"></small></div><img id="g-mix" alt="16 RefMix samples" width="972" height="972"></div>
+  </div>
+
+  <h3>Quantitative results</h3>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th rowspan="2" scope="col" style="text-align:left">Task</th><th rowspan="2" scope="col" style="text-align:left">Method</th><th colspan="2" scope="colgroup">Reward ↑</th><th colspan="2" scope="colgroup">Diversity \(D_{\mathrm{all}}\) ↑</th></tr>
+        <tr><th scope="col" class="b">Baseline</th><th scope="col" class="r">+ RefMix</th><th scope="col" class="b">Baseline</th><th scope="col" class="r">+ RefMix</th></tr>
+      </thead>
+      <tbody>
+<tr class=""><th rowspan="3" scope="rowgroup">PickScore</th><td class="m">NFT</td><td class=""><b>22.56</b></td><td class="r">22.54</td><td class="gap">0.084</td><td class="r"><b>0.099</b></td></tr>
+<tr class=""><td class="m">AWM</td><td class="">22.56</td><td class="r"><b>22.61</b></td><td class="gap">0.083</td><td class="r"><b>0.087</b></td></tr>
+<tr class=""><td class="m">RAM</td><td class=""><b>22.77</b></td><td class="r"><b>22.77</b></td><td class="gap">0.077</td><td class="r"><b>0.086</b></td></tr>
+<tr class="grp"><th rowspan="3" scope="rowgroup">GenEval</th><td class="m">NFT</td><td class="">0.781</td><td class="r"><b>0.811</b></td><td class="gap">0.084</td><td class="r"><b>0.087</b></td></tr>
+<tr class=""><td class="m">AWM</td><td class=""><b>0.815</b></td><td class="r">0.799</td><td class="gap">0.049</td><td class="r"><b>0.132</b></td></tr>
+<tr class=""><td class="m">RAM</td><td class="">0.822</td><td class="r"><b>0.837</b></td><td class="gap">0.059</td><td class="r"><b>0.101</b></td></tr>
+<tr class="grp"><th rowspan="3" scope="rowgroup">OCR</th><td class="m">NFT</td><td class="">0.933</td><td class="r"><b>0.934</b></td><td class="gap">0.102</td><td class="r"><b>0.114</b></td></tr>
+<tr class=""><td class="m">AWM</td><td class="">0.932</td><td class="r"><b>0.933</b></td><td class="gap">0.157</td><td class="r"><b>0.167</b></td></tr>
+<tr class=""><td class="m">RAM</td><td class="">0.833</td><td class="r"><b>0.890</b></td><td class="gap">0.089</td><td class="r"><b>0.115</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">\(D_{\mathrm{all}}\): mean pairwise DINOv3 distance among 16 samples per prompt, over 64 held-out prompts. LPIPS, Vendi and auxiliary rewards are in the paper.</p>
+
+  <h3>Training, not just the sampler</h3>
+  <p>The reference prefix can also be used at inference on any fine-tuned model, trading reward for diversity. With the same inference prefix on both NFT checkpoints, the RefMix-trained model gives 12.1%, 44.2% and 40.1% more DINO diversity at the reward of baseline inference on PickScore, GenEval and OCR.</p>
+  <figure class="text">
+    <img src="static/images/inference_intervention.png" alt="Reward against DINO diversity for baseline-trained and RefMix-trained NFT checkpoints across inference prefixes on PickScore, GenEval and OCR." loading="lazy">
+    <figcaption>Fixed NFT checkpoints across inference prefix fractions \(k\).</figcaption>
+  </figure>
+
+  <h3>Text-to-video</h3>
+  <p>Unchanged, RefMix carries over to NFT on Wan2.1-T2V-1.3B with the PickScore reward: PickScore rises from 21.26 to 21.47, with 20.3% more DINO diversity at the reward of baseline inference.</p>
+  <figure class="narrow">
+    <img src="static/images/t2v_qual.jpg" alt="Middle frames of videos from four initial noises for three prompts, baseline and RefMix." loading="lazy">
+    <figcaption>Middle frames of videos from four initial noises.</figcaption>
+  </figure>
+</section>
+
+</main>
+
+<script>
+const G = [{"method": "NFT", "task": "PickScore", "prompt": "There are abstract shapes and patterns that seem to shift and morph as you look at them", "baseline": {"src": "static/images/grid_nft_pickscore_baseline.jpg", "reward": "20.12"}, "refmix": {"src": "static/images/grid_nft_pickscore_refmix.jpg", "reward": "20.94"}}, {"method": "NFT", "task": "GenEval", "prompt": "a photo of a dining table right of an oven", "baseline": {"src": "static/images/grid_nft_geneval_baseline.jpg", "reward": "0.646"}, "refmix": {"src": "static/images/grid_nft_geneval_refmix.jpg", "reward": "0.854"}}, {"method": "AWM", "task": "PickScore", "prompt": "A nervous couple on a first date", "baseline": {"src": "static/images/grid_awm_pickscore_baseline.jpg", "reward": "23.11"}, "refmix": {"src": "static/images/grid_awm_pickscore_refmix.jpg", "reward": "22.73"}}, {"method": "AWM", "task": "GenEval", "prompt": "a photo of a chair", "baseline": {"src": "static/images/grid_awm_geneval_baseline.jpg", "reward": "1.000"}, "refmix": {"src": "static/images/grid_awm_geneval_refmix.jpg", "reward": "1.000"}}, {"method": "RAM", "task": "PickScore", "prompt": "Shepherd's Pie in the middle of the desert", "baseline": {"src": "static/images/grid_ram_pickscore_baseline.jpg", "reward": "23.03"}, "refmix": {"src": "static/images/grid_ram_pickscore_refmix.jpg", "reward": "22.99"}}, {"method": "RAM", "task": "GenEval", "prompt": "a photo of three wine glasses", "baseline": {"src": "static/images/grid_ram_geneval_baseline.jpg", "reward": "0.979"}, "refmix": {"src": "static/images/grid_ram_geneval_refmix.jpg", "reward": "0.979"}}];
+const methods = [...new Set(G.map(g => g.method))], tasks = [...new Set(G.map(g => g.task))];
+let cur = { method: methods[0], task: tasks[0] };
+function seg(id, values, key) {
+  const box = document.getElementById(id);
+  values.forEach(v => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = v;
+    b.onclick = () => { cur[key] = v; show(); };
+    box.appendChild(b);
+  });
+}
+function show() {
+  const g = G.find(x => x.method === cur.method && x.task === cur.task);
+  for (const [id, key] of [["seg-method", "method"], ["seg-task", "task"]])
+    document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute("aria-pressed", b.textContent === cur[key]));
+  document.getElementById("g-prompt").innerHTML = `<b>${g.method} · ${g.task}</b>&ensp;“${g.prompt.replace(/[<>&]/g, "")}”`;
+  document.getElementById("g-base").src = g.baseline.src;
+  document.getElementById("g-mix").src = g.refmix.src;
+  document.getElementById("g-rb").textContent = `reward ${g.baseline.reward}`;
+  document.getElementById("g-rm").textContent = `reward ${g.refmix.reward}`;
+}
+seg("seg-method", methods, "method"); seg("seg-task", tasks, "task"); show();
+G.forEach(g => { new Image().src = g.baseline.src; new Image().src = g.refmix.src; });
+
+if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+  document.querySelectorAll("video").forEach(v => { v.removeAttribute("autoplay"); v.pause(); v.controls = true; });
+</script>
+</body>
+</html>
